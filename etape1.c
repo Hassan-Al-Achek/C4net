@@ -1,3 +1,10 @@
+/*
+ * Description: TCP Client 
+ * Auther: Hassan Al Achek
+ * Compilation: gcc etape1.c -o etape1
+ * Last Edit: 12 Apr 2022 
+ * */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -35,6 +42,7 @@ void main (int argc, char *argv[]){
 	// Create Socket File Descriptor
 	fdSocket = socket(AF_INET, SOCK_STREAM, 0);
 	printf("[+] Socket fd: %d\n", fdSocket);
+	
 	// Resolve Hostname -> IP address
 	printf("[+] Hostname: %s\n", hostname);	
 	hostNameInfo = gethostbyname(hostname);
@@ -62,11 +70,15 @@ void main (int argc, char *argv[]){
 	}
 
 	// Receive Data From The Server (Sensor)
+	
 	isReceived = recv(fdSocket, receivedData, buffSize * sizeof(char), 0);
+
 	if (isReceived == -1){
 		perror("[-] No Data Received\n");
 	} else {
 		printf("[<-+] Data Successfully Received From %s:%d\n", inet_ntoa(*((struct in_addr *)hostNameInfo->h_addr_list[0])), port);
+		receivedData[isReceived - 1] = '\0';
+		
 		printf("[+] Data: %s\n", receivedData);
 
 	}

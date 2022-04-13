@@ -1,3 +1,13 @@
+/*
+ * Description: TCP Server with Embded Client: 
+ * 	CLient: Request Sensors Data
+ * 	Server: Make Sensors Data Available To Clients 
+ * Auther: Hassan Al Achek
+ * Compilation: gcc etape3.c -o etape3
+ * Last Edit: 12 Apr 2022
+ *
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,7 +19,7 @@
 #include <netdb.h>
 #include <signal.h>
 
-#define port 4444
+#define port 4443
 #define buffSize 2048
 #define tempPort 8000
 #define lumPort  8001
@@ -63,6 +73,7 @@ float averageLum(char **hostname, char *dataFromSensor){
 
 }
 
+// There Is Only One Mouv Sensor
 float averageMouv(char **hostname, char *dataFromSensor){
 	int j = 2;
 	float avMouv = 0;
@@ -74,6 +85,7 @@ float averageMouv(char **hostname, char *dataFromSensor){
 
 void getDataSensor(char *hostname, int sensorPort, char *dataFromSensor){
 	int sensorSocket;
+	ssize_t isReceived;
 	struct sockaddr_in sensorAddr;
 	struct hostent *sensorInfo;
 	
@@ -96,10 +108,12 @@ void getDataSensor(char *hostname, int sensorPort, char *dataFromSensor){
 	connect(sensorSocket, (struct sockaddr*) &sensorAddr, sizeof(sensorAddr));
 
 	// Dummy Data For The Sensor
-	send(sensorSocket, dummyData, strlen(dummyData)+1, 0);
+	send(sensorSocket, dummyData, strlen(dummyData), 0);
 	// Receive Data From Sensor
-	recv(sensorSocket, dataFromSensor, buffSize, 0);
-
+	isReceived = recv(sensorSocket, dataFromSensor, buffSize, 0);
+	if(isReceived != -1){
+		dataFromSensor[isReceived] = '\0';
+	}
 	printf("[<-+ Sensor] Data Received From The Sensor\n");
 	printf("[<-+ Sensor] %s\n", dataFromSensor);
 
@@ -127,7 +141,7 @@ void main(int argc, char* argv[]){
 	char receivedData[buffSize], dataFromSensor[buffSize];
 	char dataToSend[buffSize] = "~* Welcome To Server *~\n";
 	float avTemp, avLum, avMouv;
-	char  *htmlToClient;
+	char  *htmlToClient = (char *)malloc(400*sizeof(char));
 	// A Variable Contains The Size of sockaddr_in Structure
 	// Used With accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 	// 								  ^
@@ -139,20 +153,6 @@ void main(int argc, char* argv[]){
 	// Handle Ctrl + c
 	signal(SIGINT,handler);
 
-	/*
-	if(argc == 2){
-		temp = strdup(argv[1]);
-		hostname = strsep(&temp, ":");
-		if(temp){
-			sensorPort = atoi(temp);
-		}
-	} else {
-		printf("[!] Usage: %s hostname:portnum\n", argv[0]);
-		exit(1);
-	}
-	//fprintf(stderr, "[+] Connecting to %s:%d\n", hostname, port);
-	*/
-
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_port = htons(port);
 	
@@ -162,6 +162,7 @@ void main(int argc, char* argv[]){
 	fdSocket = socket(AF_INET, SOCK_STREAM, 0);
 
 	isBinded = bind(fdSocket, (struct sockaddr *)&serverAddr, sizeof(struct sockaddr));
+	
 	if(isBinded == -1){
 		perror("[-] Can't Bind | Reason");
 		exit(1);
@@ -171,17 +172,18 @@ void main(int argc, char* argv[]){
 	printf("[+] Start Listning At %s:%d\n", ip, port);
 	
 	while(1){
+
 		// Extract First Socket From The Queue
 		clientSocket = accept(fdSocket, (struct sockaddr *)&clientAddr, &sizeOfSIn);
 
-		printf("[+->] Sending Data: %s\n", dataToSend);
+		printf("\n[+->] Sending Data: %s", dataToSend);
 		send(clientSocket, dataToSend, strlen(dataToSend), 0);
 		
-		printf("[+] Connection Received From %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+		printf("[+] Connection Received From: %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
 		// Receive Data From Client
 		recv(clientSocket, receivedData, buffSize, 0);
 
-		printf("[<-+] Data Received From %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+		printf("[<-+] Data Received From: %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
 		printf("[<-+] Data: %s\n", receivedData);
 
 
@@ -204,19 +206,25 @@ void main(int argc, char* argv[]){
 	
 
 		gcvt(avTemp, 7, avCharTemp);
-		send(clientSocket,avCharTemp, strlen(avCharTemp) + 1, 0);
+		
+		// send(clientSocket,avCharTemp, strlen(avCharTemp) + 1, 0);
 
 		// Send Luminosité Data
 		gcvt(avLum, 7, avCharLum);
-		send(clientSocket,avCharLum, strlen(avCharLum) + 1, 0);
+		
+		//send(clientSocket,avCharLum, strlen(avCharLum) + 1, 0);
 
 		// Send Mouvement
 		gcvt(avMouv, 7, avCharMouv);
-		send(clientSocket,avCharMouv, strlen(avCharMouv) + 1, 0);
 		
+		//send(clientSocket,avCharMouv, strlen(avCharMouv) + 1, 0);
+		
+
 		snprintf(htmlToClient, 400, "<pre>Temp:%s<br>Lum:%s<br>Mouvement:%s</pre>", avCharTemp, avCharLum, avCharMouv);
+		// Bulk Send
 		send(clientSocket, htmlToClient, strlen(htmlToClient) + 1, 0);
-	
+		
+		free(htmlToClient);
 		close(clientSocket);
 	}
 

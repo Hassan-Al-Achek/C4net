@@ -1,3 +1,13 @@
+/*
+ * Description: TCP Server 
+ * Auther: Hassan Al Achek
+ * Compilation: gcc etape2.c -o etape2
+ * Last Edit: 12 Apr 2022
+ * Note: Local Server Can't Be Accessed From
+ * Outside the LAN, If You Want To Do That
+ * Setup Iptable with Port Forwarding
+ * */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,14 +17,16 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-#define port 4444
+#define port 4442
 #define buffSize 2048
 
 void main(int argc, char* argv[]){
+	// Deafult IP Address
 	const char *ip = "127.0.0.1";
 	struct sockaddr_in serverAddr, clientAddr;
 	int fdSocket, clientSocket;
 	int isBinded;
+	ssize_t isReceived;
 	char receivedData[buffSize];
 	char dataToSend[buffSize] = "~* Welcome To Server *~\n";
 	// A Variable Contains The Size of sockaddr_in Structure
@@ -39,22 +51,26 @@ void main(int argc, char* argv[]){
 	}
 	
 	listen(fdSocket, 5);
-	printf("[+] Start Listning At %s:%d\n", ip, port);
+	printf("[+] Start Listning On %s:%d\n", ip, port);
 	
 	while(1){
 		// Extract First Socket From The Queue
 		clientSocket = accept(fdSocket, (struct sockaddr *)&clientAddr, &sizeOfSIn);
-
-		printf("[+->] Sending Data: %s\n", dataToSend);
-		send(clientSocket, dataToSend, strlen(dataToSend), 0);
 		
-		printf("[+] Connection Received From %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
-		// Receive Data From Client
-		recv(clientSocket, receivedData, buffSize, 0);
+		printf("\n[+] Connection Received From: %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
 
+		printf("[+->] Sending Data: %s", dataToSend);
+		send(clientSocket, dataToSend, strlen(dataToSend) + 1, 0);
+		
+		// Receive Data From Client
+		isReceived = recv(clientSocket, receivedData, buffSize, 0);
+		
+		if(isReceived != -1)
+			receivedData [isReceived] = '\0';
+		
 		printf("[<-+] Data Received From %s:%d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
 		printf("[<-+] Data: %s\n", receivedData);
-	
+			
 		// printf("[+->] Sending Data: %s\n", dataToSend);
 		// send(clientSocket, dataToSend, strlen(dataToSend), 0);
 	
